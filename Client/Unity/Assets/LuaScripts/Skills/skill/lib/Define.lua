@@ -281,8 +281,14 @@ function SetEntityForwardVector(entityId,direction)
         return
     end
 
----@diagnostic disable-next-line: invisible
-    entity.__DotaEntity:SetForwardVector(direction)
+    -- Dota版本：entity.__DotaEntity:SetForwardVector(direction)
+    -- Unity版本：MockEntity/后续Unity实体直接实现 SetForwardVector
+    ---@diagnostic disable-next-line: invisible
+    if entity.__DotaEntity and entity.__DotaEntity.SetForwardVector then
+        entity.__DotaEntity:SetForwardVector(direction)
+    elseif entity.SetForwardVector then
+        entity:SetForwardVector(direction)
+    end
 end
 
 -- 设置实体有效位置(考虑地形)
@@ -349,7 +355,11 @@ function SetFindClearSpaceForUnit(insId)
         return
     end
 
-    FindClearSpaceForUnit(entity.__DotaEntity, entity:GetPosition(), true)
+    -- Dota版本：FindClearSpaceForUnit(dotaEntity, position, true)
+    -- Unity版本：无需处理；这里保证不报错
+    if entity.__DotaEntity and FindClearSpaceForUnit then
+        FindClearSpaceForUnit(entity.__DotaEntity, entity:GetPosition(), true)
+    end
 end
 
 -- 获取配置表行数据
