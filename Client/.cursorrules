@@ -1,0 +1,54 @@
+# ProjectW 项目规则
+
+## 一句话描述
+无限恐怖流Roguelike，Unity6+xLua，PolyMesh风格化
+
+## 技术栈
+- 引擎: Unity 6 + URP
+- 逻辑: xLua (技能系统从Dota2游廊移植，保持原有逻辑)
+- 配表: Lua
+- 渲染: PolyMesh风格化Shader
+
+## 目录约定
+```
+Assets/
+├── _Core/        # C#核心代码
+├── _Data/        # 预制体、SO资产
+├── _Editor/      # 编辑器工具
+├── _Resources/   # 动态加载资源
+├── LuaScripts/   # Lua代码和配表
+│   ├── Config/   # Lua配置表
+│   ├── Skills/   # 技能逻辑
+│   └── Systems/  # 系统逻辑
+└── Scenes/       # 场景
+```
+
+## 代码规范
+- C#类名: `PascalCase`
+- C#私有字段: `_camelCase`
+- Lua: 保持原项目风格
+- 注释: 中文
+
+## 架构分层
+```
+C#表现层 (渲染/动画/UI/物理)
+        ↕ 桥接层
+Lua逻辑层 (技能/Buff/战斗)
+        ↕
+Lua配置层 (数值/技能表/关卡表)
+```
+
+## 分支规则
+- 开始代码任务前，先执行 `git branch` 确认当前分支
+- 分支决定工作上下文：
+  - `main`: 稳定开发，保持可运行
+  - `feature/*`: 功能开发，专注该功能
+  - `exp/*`: 实验性，可大胆尝试
+- commit格式: `类型(范围): 描述`
+  - 类型: feat/fix/refactor/chore
+  - 示例: `feat(skill): 实现火球术`
+
+## AI协作规则
+1. Lua代码只做兼容，不改原有逻辑
+2. 改_Core/前说明影响范围
+3. 每次commit保持可编译
