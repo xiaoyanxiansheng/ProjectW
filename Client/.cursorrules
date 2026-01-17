@@ -26,7 +26,15 @@ Assets/
 ## 代码规范
 - C#类名: `PascalCase`
 - C#私有字段: `_camelCase`
-- Lua: 保持原项目风格
+- Lua规范:
+  - 技能模块 (`LuaScripts/Skills/`): 保持原Dota2风格，不改原有逻辑
+  - 其他模块 (xLua风格):
+    - 模块/类名: `PascalCase` (如 `GameManager`)
+    - 方法名: `PascalCase` (用 `:` 定义，如 `function Player:GetData()`)
+    - 局部变量: `camelCase` (如 `playerData`)
+    - 私有字段: `_camelCase` (如 `self._cache`)
+    - 常量: `UPPER_SNAKE_CASE` (如 `MAX_COUNT`)
+    - 使用EmmyLua注解 (`---@param`, `---@return`, `---@class`)
 - 注释: 中文
 
 ## 架构分层
@@ -49,6 +57,8 @@ Lua配置层 (数值/技能表/关卡表)
   - 示例: `feat(skill): 实现火球术`
 
 ## AI协作规则
-1. Lua代码只做兼容，不改原有逻辑
-2. 改_Core/前说明影响范围
-3. 每次commit保持可编译
+1. 技能模块Lua (`LuaScripts/Skills/`) 只做兼容，不改原有逻辑
+2. 其他Lua模块使用xLua风格编写，匹配项目规范
+3. 改_Core/前说明影响范围
+4. 每次commit保持可编译
+5. 使用UnityMCP前，先执行 `telemetry_ping` 检查连接状态
