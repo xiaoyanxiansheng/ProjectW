@@ -392,9 +392,23 @@ function Fight:ApplyDamage(attacker, targeter, skill_id, skill_level, times, _)
         targeter:AddHP(-dmg)
     end
 
-    -- 测试表现：头顶-1 + 闪红0.5s（当前阶段不做真实数值展示）
+    -- 血量同步（用于血条/死亡表现）
+    if UnityBridge_OnEntityHpChanged ~= nil and targeter.GetInsid and targeter.GetHP then
+        local maxhp = 100
+        if targeter.GetAttr_MaxHP then
+            maxhp = math.floor(targeter:GetAttr_MaxHP() or 100)
+        end
+        UnityBridge_OnEntityHpChanged(
+            targeter:GetInsid(),
+            math.floor(targeter:GetHP() or 0),
+            maxhp,
+            (targeter.IsAlive and (not targeter:IsAlive())) or false
+        )
+    end
+
+    -- 测试表现：头顶飘字（真实伤害值） + 闪红0.5s
     if UnityBridge_PlayDamageHealVfx ~= nil and targeter.GetInsid then
-        UnityBridge_PlayDamageHealVfx(targeter:GetInsid(), -1)
+        UnityBridge_PlayDamageHealVfx(targeter:GetInsid(), -dmg)
     end
 
     if MsgConst and SendBeginMessage and attacker.GetInsid and targeter.GetInsid then
@@ -418,9 +432,23 @@ function Fight:ApplyHeal(_, targeter, _, _, times, _)
         targeter:AddHP(heal)
     end
 
-    -- 测试表现：头顶+1 + 闪绿0.5s（当前阶段不做真实数值展示）
+    -- 血量同步（用于血条/死亡表现）
+    if UnityBridge_OnEntityHpChanged ~= nil and targeter.GetInsid and targeter.GetHP then
+        local maxhp = 100
+        if targeter.GetAttr_MaxHP then
+            maxhp = math.floor(targeter:GetAttr_MaxHP() or 100)
+        end
+        UnityBridge_OnEntityHpChanged(
+            targeter:GetInsid(),
+            math.floor(targeter:GetHP() or 0),
+            maxhp,
+            (targeter.IsAlive and (not targeter:IsAlive())) or false
+        )
+    end
+
+    -- 测试表现：头顶飘字（真实治疗值） + 闪绿0.5s
     if UnityBridge_PlayDamageHealVfx ~= nil and targeter.GetInsid then
-        UnityBridge_PlayDamageHealVfx(targeter:GetInsid(), 1)
+        UnityBridge_PlayDamageHealVfx(targeter:GetInsid(), heal)
     end
 end
 

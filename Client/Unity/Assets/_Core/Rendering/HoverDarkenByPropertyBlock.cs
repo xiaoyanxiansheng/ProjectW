@@ -72,6 +72,21 @@ namespace ProjectW.Rendering
                 ? GetComponentsInChildren<Renderer>(includeInactive: true)
                 : GetComponents<Renderer>();
 
+            // 过滤：忽略被标记为“不参与变暗/闪色”的Renderer（例如血条）
+            if (_renderers != null && _renderers.Length > 0)
+            {
+                var tmp = new System.Collections.Generic.List<Renderer>(_renderers.Length);
+                for (var i = 0; i < _renderers.Length; i++)
+                {
+                    var r = _renderers[i];
+                    if (r == null) continue;
+                    // 如果Renderer所在层级任意父节点带 IgnoreHoverDarken，则跳过
+                    if (r.GetComponentInParent<IgnoreHoverDarken>() != null) continue;
+                    tmp.Add(r);
+                }
+                _renderers = tmp.ToArray();
+            }
+
             _baseColors = new Color[_renderers.Length];
             for (var i = 0; i < _renderers.Length; i++)
             {

@@ -78,6 +78,13 @@ namespace ProjectW.LuaBridge
                 "UnityBridge_PlayDamageHealVfx",
                 (System.Action<int, int>)ProjectW.SkillTest.DamageHealVfxService.Play
             );
+
+            // 血量同步（测试环境）
+            // Lua侧调用：UnityBridge_OnEntityHpChanged(insId, hp, maxHp, isDead)
+            _env.Global.Set(
+                "UnityBridge_OnEntityHpChanged",
+                (System.Action<int, int, int, bool>)ProjectW.SkillTest.EntityHealthService.OnEntityHpChanged
+            );
         }
 
         private byte[] CustomLoader(ref string moduleName)
