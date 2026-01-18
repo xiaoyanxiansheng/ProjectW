@@ -32,6 +32,18 @@ if bit.lshift == nil then
     end
 end
 
+-- 兼容math.atan2（Lua 5.3+ 通常用 math.atan(y, x)）
+if math.atan2 == nil then
+    function math.atan2(y, x)
+        return math.atan(y, x)
+    end
+end
+
+-- 兼容unpack（Lua 5.2+ 使用 table.unpack）
+if unpack == nil then
+    unpack = table.unpack
+end
+
 ------------------------------------------------------------
 -- Vector 类型（Lua侧实现，满足现有技能代码用法）
 ------------------------------------------------------------
@@ -102,6 +114,32 @@ end
 ---@return Vector
 function Vector(x, y, z)
     return setmetatable({ x = x or 0, y = y or 0, z = z or 0 }, VectorMT)
+end
+
+------------------------------------------------------------
+-- 兼容：Dota2 Vector 下标访问
+-- 说明：部分技能逻辑会把 Vector 当作数组用（v[1]/v[2]/v[3]）。
+-- 这里映射为：
+-- - v[1] <-> x
+-- - v[2] <-> y
+-- - v[3] <-> z
+------------------------------------------------------------
+do
+    local _vectorMethods = VectorMT
+
+    VectorMT.__index = function(t, k)
+        if k == 1 then return rawget(t, "x") end
+        if k == 2 then return rawget(t, "y") end
+        if k == 3 then return rawget(t, "z") end
+        return _vectorMethods[k]
+    end
+
+    VectorMT.__newindex = function(t, k, v)
+        if k == 1 then rawset(t, "x", v); return end
+        if k == 2 then rawset(t, "y", v); return end
+        if k == 3 then rawset(t, "z", v); return end
+        rawset(t, k, v)
+    end
 end
 
 ------------------------------------------------------------
@@ -195,8 +233,9 @@ function ConfData:GetGameConfig(key)
 end
 
 -- 系统配置（Debug.lua 会读取 SkillLogLevel 等）
+-- 默认开启技能模块自带日志（输出到Unity控制台）
 function ConfData:GetSystemConfig(_)
-    return 0
+    return 1
 end
 
 function ConfData:GetTable(name)
@@ -237,6 +276,28 @@ end
 ------------------------------------------------------------
 -- 其他系统桩（后续Phase3/4再替换为真实实现）
 ------------------------------------------------------------
+-- Dota常用判定：在Unity版本里做最小兼容（只保证不报错）
+if IsValidEntity == nil then
+    ---@param e any
+    ---@return boolean
+    function IsValidEntity(e)
+        return e ~= nil
+    end
+end
+
+-- Dota移动能力枚举（Phase1占位）
+DOTA_UNIT_CAP_MOVE_GROUND = DOTA_UNIT_CAP_MOVE_GROUND or 0
+
+-- Dota接口：寻找空位（Unity Phase1 不需要真正处理，保证调用不报错即可）
+if FindClearSpaceForUnit == nil then
+    ---@param _dotaEntity any
+    ---@param _position Vector
+    ---@param _clear boolean
+    function FindClearSpaceForUnit(_dotaEntity, _position, _clear)
+        -- Unity版本无需处理
+    end
+end
+
 GridNav = GridNav or {}
 function GridNav:IsTraversable(_) return true end
 function GridNav:IsBlocked(_) return false end
@@ -244,11 +305,67 @@ function GridNav:IsBlocked(_) return false end
 function GetGroundPosition(position, _) return position end
 function GetGroundHeight(_, _) return 0 end
 
+------------------------------------------------------------
+-- DoUniqueString（部分Dota工具方法，ClientParticleManager会用）
+------------------------------------------------------------
+if DoUniqueString == nil then
+    local __uniqueId = 0
+    ---@param prefix string|nil
+    ---@return string
+    function DoUniqueString(prefix)
+        __uniqueId = __uniqueId + 1
+        return tostring(prefix or "uid") .. "_" .. tostring(__uniqueId)
+    end
+end
+
+------------------------------------------------------------
+-- DebugDrawLine：支持 Debug.lua 的范围显示
+-- Debug.lua 调用：DebugDrawLine(origin, target, r,g,b,ztest,duration)
+-- 这里做坐标系转换（Lua技能坐标 -> Unity世界坐标），再交给C#绘制。
+------------------------------------------------------------
+local DOTA_UNIT_SCALE = 0.0254
+
+local function SkillToUnityVec(v)
+    if v == nil then
+        return Vector(0, 0, 0)
+    end
+    return Vector(v.x * DOTA_UNIT_SCALE, v.z * DOTA_UNIT_SCALE, v.y * DOTA_UNIT_SCALE)
+end
+
+function DebugDrawLine(origin, target, r, g, b, ztest, duration)
+    if UnityBridge_DebugDrawLineUnity == nil then
+        return
+    end
+    if origin == nil or target == nil then
+        return
+    end
+    local o = SkillToUnityVec(origin)
+    local t = SkillToUnityVec(target)
+    UnityBridge_DebugDrawLineUnity(
+        o.x, o.y, o.z,
+        t.x, t.y, t.z,
+        r or 255, g or 255, b or 255,
+        ztest == true,
+        duration or 0
+    )
+end
+
 ParticleManager = ParticleManager or { __id = 0 }
-PATTACH_WORLDORIGIN = PATTACH_WORLDORIGIN or 0
+-- Particle Attach 类型（技能系统会引用多个PATTACH常量；这里按需补齐）
+PATTACH_ABSORIGIN = PATTACH_ABSORIGIN or 0
+PATTACH_CUSTOMORIGIN = PATTACH_CUSTOMORIGIN or 1
+PATTACH_WORLDORIGIN = PATTACH_WORLDORIGIN or 2
+PATTACH_MAIN_VIEW = PATTACH_MAIN_VIEW or 3
+PATTACH_ABSORIGIN_FOLLOW = PATTACH_ABSORIGIN_FOLLOW or 4
+PATTACH_POINT_FOLLOW = PATTACH_POINT_FOLLOW or 5
+PATTACH_EYES_FOLLOW = PATTACH_EYES_FOLLOW or 6
+PATTACH_OVERHEAD_FOLLOW = PATTACH_OVERHEAD_FOLLOW or 7
+PATTACH_ROOTBONE_FOLLOW = PATTACH_ROOTBONE_FOLLOW or 8
+
 function ParticleManager:CreateParticle(_, _, _) self.__id = self.__id + 1; return self.__id end
 function ParticleManager:SetParticleControl(_, _, _) end
 function ParticleManager:SetParticleControlTransform(_, _, _, _) end
+function ParticleManager:SetParticleControlEnt(_, _, _, _, _, _, _) end
 function ParticleManager:DestroyParticle(_, _) end
 function ParticleManager:ReleaseParticleIndex(_) end
 
@@ -275,6 +392,11 @@ function Fight:ApplyDamage(attacker, targeter, skill_id, skill_level, times, _)
         targeter:AddHP(-dmg)
     end
 
+    -- 测试表现：头顶-1 + 闪红0.5s（当前阶段不做真实数值展示）
+    if UnityBridge_PlayDamageHealVfx ~= nil and targeter.GetInsid then
+        UnityBridge_PlayDamageHealVfx(targeter:GetInsid(), -1)
+    end
+
     if MsgConst and SendBeginMessage and attacker.GetInsid and targeter.GetInsid then
         SendBeginMessage(MsgConst.ENTITY_DAMAGED, {
             casterinsid = attacker:GetInsid(),
@@ -294,6 +416,11 @@ function Fight:ApplyHeal(_, targeter, _, _, times, _)
     if heal < 0 then heal = 0 end
     if targeter.AddHP then
         targeter:AddHP(heal)
+    end
+
+    -- 测试表现：头顶+1 + 闪绿0.5s（当前阶段不做真实数值展示）
+    if UnityBridge_PlayDamageHealVfx ~= nil and targeter.GetInsid then
+        UnityBridge_PlayDamageHealVfx(targeter:GetInsid(), 1)
     end
 end
 

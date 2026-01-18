@@ -15,6 +15,26 @@ namespace ProjectW.LuaBridge
         public int InsId => _insId;
         public int Camp => _camp;
 
+        /// <summary>
+        /// 运行时初始化/修改insId与camp（测试环境用）
+        /// </summary>
+        public void Initialize(int insId, int camp)
+        {
+            var wasEnabled = isActiveAndEnabled;
+            if (wasEnabled)
+            {
+                EntityBridge.Unregister(_insId, transform);
+            }
+
+            _insId = insId;
+            _camp = camp;
+
+            if (wasEnabled)
+            {
+                EntityBridge.Register(_insId, transform, _camp);
+            }
+        }
+
         private void OnEnable()
         {
             EntityBridge.Register(_insId, transform, _camp);

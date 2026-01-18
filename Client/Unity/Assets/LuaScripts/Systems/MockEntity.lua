@@ -15,6 +15,83 @@ Phase1 Mock实体系统
 local MockEntity = {}
 MockEntity.__index = MockEntity
 
+------------------------------------------------------------
+-- Dota实体代理（中间层兼容）
+-- 目标：不修改 Skills/ 下的原始Lua技能逻辑，通过提供 __DotaEntity + 常用方法桩保证不报错。
+------------------------------------------------------------
+---@param owner table
+---@return table
+local function CreateDotaEntityProxy(owner)
+    local proxy = {
+        __owner = owner,
+        __angles = Vector(0, 0, 0), -- pitch/yaw/roll
+    }
+
+    function proxy:entindex()
+        return (owner and owner._insId) or 0
+    end
+
+    function proxy:IsNull()
+        return owner == nil
+    end
+
+    function proxy:GetAbsOrigin()
+        if owner and owner.GetPosition then
+            return owner:GetPosition()
+        end
+        return Vector(0, 0, 0)
+    end
+
+    function proxy:SetAbsOrigin(pos)
+        if owner and owner.SetPosition then
+            owner:SetPosition(pos)
+        end
+    end
+
+    function proxy:GetForwardVector()
+        if owner and owner.GetForwardVector then
+            return owner:GetForwardVector()
+        end
+        return Vector(1, 0, 0)
+    end
+
+    function proxy:SetForwardVector(dir)
+        if owner and owner.SetForwardVector then
+            owner:SetForwardVector(dir)
+        end
+    end
+
+    function proxy:StartGestureWithFadeAndPlaybackRate(_, _, _, _)
+        -- Unity版本动画由表现层处理；这里只做占位
+    end
+
+    function proxy:AddNoDraw()
+        -- Unity版本可由Renderer控制；这里仅占位
+    end
+
+    function proxy:RemoveNoDraw()
+        -- Unity版本可由Renderer控制；这里仅占位
+    end
+
+    function proxy:SetMoveCapability(_)
+        -- Unity版本移动能力由控制器/状态机决定；这里仅占位
+    end
+
+    function proxy:FollowEntityMerge(_, _)
+        -- Debug/武器跟随等Dota接口占位
+    end
+
+    function proxy:GetAnglesAsVector()
+        return self.__angles or Vector(0, 0, 0)
+    end
+
+    function proxy:SetAngles(pitch, yaw, roll)
+        self.__angles = Vector(pitch or 0, yaw or 0, roll or 0)
+    end
+
+    return proxy
+end
+
 function MockEntity.New(insId)
     local o = {
         _insId = insId,
@@ -25,6 +102,8 @@ function MockEntity.New(insId)
         _camp = 1,
         _skillLevel = {}, -- [skillId]=level
     }
+    -- Skills系统大量使用 entity.__DotaEntity:*（Dota句柄），这里提供代理对象做兼容。
+    o.__DotaEntity = CreateDotaEntityProxy(o)
     return setmetatable(o, MockEntity)
 end
 
@@ -45,7 +124,7 @@ function MockEntity:StopButNotBreak()
 end
 
 function MockEntity:GetDotaEntity()
-    return nil
+    return self.__DotaEntity
 end
 
 function MockEntity:SetAlive(alive)
@@ -182,6 +261,12 @@ function Units:SpawnSpecial(_, _, _)
     return {}
 end
 
+-- Dota2单位缩放（与UnityBridge/CoordAdapter保持一致）
+local DOTA_UNIT_SCALE = 0.0254
+local function UnityToSkill(u)
+    return u / DOTA_UNIT_SCALE
+end
+
 -- Phase1：创建两个默认实体，方便验证（1=施法者，2=目标）
 if Units:GetUnitByInsid(1) == nil then
     local caster = MockEntity.New(1)
@@ -193,9 +278,30 @@ end
 if Units:GetUnitByInsid(2) == nil then
     local target = MockEntity.New(2)
     target:SetCamp(2)
-    target:SetPosition(Vector(5, 0, 0))
+    -- Unity(5,0,0) -> Skill(5/scale,0,0)
+    target:SetPosition(Vector(UnityToSkill(5), 0, 0))
     Units:AddUnit(2, target)
 end
+
+-- PhaseB：额外的Dummy实体（用于范围/结算/选目标测试）
+local function _addDummy(insId, camp, skillPos)
+    if Units:GetUnitByInsid(insId) ~= nil then
+        return
+    end
+    local e = MockEntity.New(insId)
+    e:SetCamp(camp)
+    e:SetPosition(skillPos)
+    Units:AddUnit(insId, e)
+end
+
+-- 注意：Lua技能坐标系 x/y平面，z高度；Unity中 Dummy_<id> 初始位置为 (x, y, z)
+-- 并应用 Dota2 -> Unity 缩放：Unity(6,0,1) -> Skill(6/scale,0,1/scale)
+_addDummy(3, 2, Vector(0, UnityToSkill(6), UnityToSkill(1)))
+_addDummy(4, 2, Vector(UnityToSkill(6), 0, UnityToSkill(1)))
+_addDummy(5, 2, Vector(UnityToSkill(-6), 0, UnityToSkill(1)))
+_addDummy(6, 2, Vector(0, UnityToSkill(-6), UnityToSkill(1)))
+_addDummy(7, 2, Vector(UnityToSkill(4), UnityToSkill(4), UnityToSkill(1)))
+_addDummy(8, 2, Vector(UnityToSkill(-4), UnityToSkill(4), UnityToSkill(1)))
 
 return MockEntity
 

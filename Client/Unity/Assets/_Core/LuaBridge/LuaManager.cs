@@ -62,6 +62,22 @@ namespace ProjectW.LuaBridge
             // 注意：Lua侧使用 Time() / FrameTime() 函数（Dota风格），这里注入为全局函数
             _env.Global.Set("Time", (Func<float>)(() => UnityEngine.Time.time));
             _env.Global.Set("FrameTime", (Func<float>)(() => UnityEngine.Time.deltaTime));
+
+            // DebugDrawLine：供 Debug.lua 的范围显示调用
+            // Lua侧将传入 Vector(origin/target) 与 r/g/b/ztest/duration
+            // 我们在Lua侧拆分为数值后再调用本函数（避免传LuaTable到C#）。
+            _env.Global.Set(
+                "UnityBridge_DebugDrawLineUnity",
+                (System.Action<float, float, float, float, float, float, float, float, float, bool, float>)
+                ProjectW.SkillTest.DebugDrawService.DrawLineUnityCoord
+            );
+
+            // 伤害/治疗表现（测试环境）
+            // Lua侧调用：UnityBridge_PlayDamageHealVfx(insId, delta)
+            _env.Global.Set(
+                "UnityBridge_PlayDamageHealVfx",
+                (System.Action<int, int>)ProjectW.SkillTest.DamageHealVfxService.Play
+            );
         }
 
         private byte[] CustomLoader(ref string moduleName)

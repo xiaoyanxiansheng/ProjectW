@@ -41,12 +41,9 @@ function _M.Init()
     PassiveSkillManagerInstance:Setup()
 
     -- 设置技能模块的更新循环
-    -- 原项目通过 Dota 的 SetThink 驱动；在Unity版本中，Update由C#侧主动驱动。
-    -- 这里保留调用仅为兼容，不依赖其真正调度能力。
-    if GameRules and GameRules.GetGameModeEntity then
-        ---@diagnostic disable-next-line: param-type-mismatch, missing-parameter
-        GameRules:GetGameModeEntity():SetThink("Update", _M)
-    end
+    -- 通过游戏规则引擎注册Update函数作为定时回调
+    ---@diagnostic disable-next-line: param-type-mismatch, missing-parameter
+    GameRules:GetGameModeEntity():SetThink("Update", _M)
 end
 
 -- 清空技能模块

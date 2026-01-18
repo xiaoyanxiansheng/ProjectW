@@ -205,8 +205,8 @@ Convars:RegisterCommand("show_model_test", function()
 end, "打开模型测试界面", 0)
 
 ------------------------ 打印 ------------------------
-DebugSkillLog = ConfData:GetSystemConfig('SkillLogLevel')
-DebugSkillRange = 0 --关闭伤害范围显示
+DebugSkillLog = 1--ConfData:GetSystemConfig('SkillLogLevel')
+DebugSkillRange = 1 --关闭伤害范围显示
 
 DebugSKillLogLayer = {
     Common = 0,

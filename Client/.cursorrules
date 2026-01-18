@@ -1,5 +1,21 @@
 # ProjectW 项目规则
 
+## 最高优先级协作流程（必须遵守）
+### 角色定义（必须遵守，避免歧义）
+- **使用者**：你（项目Owner/开发者/提需求的人）
+- **AI**：我（AI模型本身/编码助手）
+
+### 流程（必须遵守）
+1. **使用者**提出需求
+2. **AI**先分析并给出方案/影响范围/风险点
+3. **使用者**明确“通过/确认”后，**AI**才开始实施
+4. **AI**实施完成后必须先自检通过（编译/运行/UnityMCP检查等），再由**使用者**验证
+5. **使用者**验证通过后，才能进入下一个需求
+
+## 最高优先级版本管理规则（必须遵守）
+- 禁止你自动执行任何 `git commit` / `git push` / `git merge` / `git rebase`
+- 需要版本操作时，你先说明原因与影响，我明确“同意”后你再执行
+
 ## 一句话描述
 无限恐怖流Roguelike，Unity6+xLua，PolyMesh风格化
 
@@ -57,8 +73,12 @@ Lua配置层 (数值/技能表/关卡表)
   - 示例: `feat(skill): 实现火球术`
 
 ## AI协作规则
-1. 技能模块Lua (`LuaScripts/Skills/`) 只做兼容，不改原有逻辑
-2. 其他Lua模块使用xLua风格编写，匹配项目规范
-3. 改_Core/前说明影响范围
-4. 每次commit保持可编译
-5. 使用UnityMCP前，先执行 `telemetry_ping` 检查连接状态
+1. 【硬规则】禁止修改技能模块Lua：`Unity/Assets/LuaScripts/Skills/` 下任何 `.lua` 文件默认不可修改；如确需修改，必须先得到**使用者**明确授意（文字“确认/通过”）。
+2. 技能模块Lua (`LuaScripts/Skills/`) 只做兼容，不改原有逻辑；兼容应优先放在 `LuaScripts/Systems/` 或 C#桥接层（`_Core/LuaBridge/`）。
+3. 其他Lua模块使用xLua风格编写，匹配项目规范
+4. 改_Core/前说明影响范围
+5. 每次commit保持可编译
+6. 使用UnityMCP前，先执行 `telemetry_ping` 检查连接状态
+7. 【硬规则】技能系统对外接口统一通过 `Unity/Assets/LuaScripts/Skills/skill/SkillAPI.lua`（全局表 `SkillAPI`）调用。禁止 C#/Lua 中间层直接访问技能内部对象/全局（如 `SkillManagerInstance` / `BuffManagerInstance` / `PassiveSkillManagerInstance` / `BuffEvent` / `Units` 等）来做业务判断或建立耦合链路。
+8. 【硬规则】“是否可移动”的判定必须调用 `SkillAPI.CheckEntityMove(insId)`；禁止自行复刻判定逻辑或读取Buff状态。
+9. 【硬规则】“是否可施法”的判定必须调用 `SkillAPI.CheckEntityDoSKill(casterInsId, skillId)`（如需）。

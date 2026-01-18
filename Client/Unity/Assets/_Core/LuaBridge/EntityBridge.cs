@@ -59,6 +59,18 @@ namespace ProjectW.LuaBridge
             ? e.Transform.forward
             : Vector3.forward;
 
+        public static bool TryGetTransform(int insId, out Transform transform)
+        {
+            if (Entities.TryGetValue(insId, out var e) && e.Transform != null)
+            {
+                transform = e.Transform;
+                return true;
+            }
+
+            transform = null;
+            return false;
+        }
+
         public static void SetForward(int insId, Vector3 fwd)
         {
             if (!Entities.TryGetValue(insId, out var e) || e.Transform == null) return;
